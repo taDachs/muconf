@@ -74,8 +74,6 @@ def _handle_nested_configs(root: dict, field: str, annotation: str) -> Any:
         # list as subfield
         type_ = _get_list_type(annotation)
         field_elems = [type_(elem) for elem in root.get(field, [])]
-        for elem in root.get(field, []):
-            field_elems.append(type_(elem))
         return field_elems
     else:
         # subfield is not list
@@ -137,9 +135,14 @@ def config(cls: type = None, isroot: bool = False) -> callable[[type], type] | t
             dict_ = self.asdict()
             return yaml.dump(dict_)
 
+        def __repr__(self) -> str:
+            values = ", ".join([f"{field}={getattr(self, field)}" for field in fields])
+            return f"{type(self).__name__}({values})"
+
         setattr(cls, "__init__", __init__)
         setattr(cls, "asdict", asdict)
         setattr(cls, "__str__", __str__)
+        setattr(cls, "__repr__", __repr__)
         setattr(cls, _MUCONF, True)
 
         return cls

@@ -94,8 +94,8 @@ def test_dict():
     class TestConf:
         foo: Foo
         bar: str = "hello"
-        baz: dict
-        bam: List[int] = []
+        baz: dict = {}
+        bam: list[int] = []
         fang = 6
 
     with tempfile.TemporaryDirectory() as tmpd:
@@ -111,6 +111,48 @@ def test_dict():
     assert t.foo.b == 3
     assert t.bar == "hello"
     assert t.bam == []
+    assert t.fang == 10
+    assert t.baz["some"] == "body"
+    assert t.baz["once"] == 1
+
+
+@test
+def test_list_with_nested_config():
+    @mcf.config
+    class Foo:
+        a: int = 1
+        b: int = 2
+
+    @mcf.config(isroot=True)
+    class TestConf:
+        foo: Foo
+        bar: str = "hello"
+        baz: dict = {}
+        bam: list[Foo] = []
+        fang = 6
+
+    with tempfile.TemporaryDirectory() as tmpd:
+        conf_path = os.path.join(tmpd, "test_conf.yaml")
+        test_conf = {
+            "foo": {"b": 3},
+            "baz": {"some": "body", "once": 1},
+            "fang": 10,
+            "bam": [{"a": 4, "b": 5}, {"b": 6}],
+        }
+        with open(conf_path, "w+") as f:
+            f.write(yaml.dump(test_conf))
+        mcf.load_from_file(conf_path)
+
+    t = TestConf()
+
+    assert t.foo.a == 1
+    assert t.foo.b == 3
+    assert t.bar == "hello"
+    assert len(t.bam) == 2
+    assert t.bam[0].a == 4
+    assert t.bam[0].b == 5
+    assert t.bam[1].a == 1
+    assert t.bam[1].b == 6
     assert t.fang == 10
     assert t.baz["some"] == "body"
     assert t.baz["once"] == 1
@@ -371,8 +413,7 @@ def run_tests():
             print("[TEST]: -------------------------------------------")
 
     if failed:
-        print("\033[31m[TEST]: Failed Tests\033[0m")
-        print("\033[31m[TEST]: Failed tests: \033[0m")
+        print("\033[31m[TEST]: Failed Tests: \033[0m")
         for fail in failed:
             print(f"\033[31m[Test]:     {fail.__name__}\033[0m")
         sys.exit(1)
