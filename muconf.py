@@ -110,7 +110,10 @@ def config(cls: type = None, isroot: bool = False) -> callable[[type], type] | t
                     setattr(self, field, root[field])
                 elif field in attrs:
                     # has default
-                    setattr(self, field, getattr(cls, field))
+                    default = getattr(cls, field)
+                    setattr(
+                        self, field, type(default)(default)
+                    )  # create new object for lists and dicts
                 else:
                     # missing value
                     raise ValueError(f"{field} doesn't have a set value nor a default value")

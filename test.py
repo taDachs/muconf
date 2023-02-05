@@ -11,10 +11,17 @@ import yaml
 import muconf as mcf
 
 _TEST_F = []
+_CLEANUP = None
 
 
 def test(f):
     _TEST_F.append(f)
+    return f
+
+
+def cleanup(f):
+    global _CLEANUP
+    _CLEANUP = f
     return f
 
 
@@ -25,7 +32,7 @@ def test_load_from_file():
         foo: int = 1
         bar: str = "hello"
         baz: float
-        bam: list[int] = None
+        bam: list[int] = []
         fang = 6
 
     with tempfile.TemporaryDirectory() as tmpd:
@@ -39,7 +46,7 @@ def test_load_from_file():
 
     assert t.foo == 1
     assert t.bar == "hello"
-    assert t.bam is None
+    assert t.bam == []
     assert t.fang == 10
     assert t.baz == 0.9
 
@@ -56,7 +63,7 @@ def test_nested_conf():
         foo: Foo
         bar: str = "hello"
         baz: float
-        bam: List[int] = None
+        bam: List[int] = []
         fang = 6
 
     with tempfile.TemporaryDirectory() as tmpd:
@@ -71,9 +78,42 @@ def test_nested_conf():
     assert t.foo.a == 1
     assert t.foo.b == 3
     assert t.bar == "hello"
-    assert t.bam is None
+    assert t.bam == []
     assert t.fang == 10
     assert t.baz == 0.9
+
+
+@test
+def test_dict():
+    @mcf.config
+    class Foo:
+        a: int = 1
+        b: int = 2
+
+    @mcf.config(isroot=True)
+    class TestConf:
+        foo: Foo
+        bar: str = "hello"
+        baz: dict
+        bam: List[int] = []
+        fang = 6
+
+    with tempfile.TemporaryDirectory() as tmpd:
+        conf_path = os.path.join(tmpd, "test_conf.yaml")
+        test_conf = {"foo": {"b": 3}, "baz": {"some": "body", "once": 1}, "fang": 10}
+        with open(conf_path, "w+") as f:
+            f.write(yaml.dump(test_conf))
+        mcf.load_from_file(conf_path)
+
+    t = TestConf()
+
+    assert t.foo.a == 1
+    assert t.foo.b == 3
+    assert t.bar == "hello"
+    assert t.bam == []
+    assert t.fang == 10
+    assert t.baz["some"] == "body"
+    assert t.baz["once"] == 1
 
 
 @test
@@ -88,7 +128,7 @@ def test_double_nested_conf():
         foo: Foo
         bar: Foo
         baz: float
-        bam: List[int] = None
+        bam: List[int] = []
         fang = 6
 
     with tempfile.TemporaryDirectory() as tmpd:
@@ -104,7 +144,7 @@ def test_double_nested_conf():
     assert t.foo.b == 3
     assert t.bar.a == 4
     assert t.bar.b == 2
-    assert t.bam is None
+    assert t.bam == []
     assert t.fang == 10
     assert t.baz == 0.9
 
@@ -126,7 +166,7 @@ def test_deeper_nested_conf():
         foo: Foo
         bar: Bar
         baz: float
-        bam: List[int] = None
+        bam: List[int] = []
         fang = 6
 
     with tempfile.TemporaryDirectory() as tmpd:
@@ -143,7 +183,7 @@ def test_deeper_nested_conf():
     assert t.foo.b == 3
     assert t.bar.a == 4
     assert t.bar.b == 2
-    assert t.bam is None
+    assert t.bam == []
     assert t.fang == 10
     assert t.baz == 0.9
 
@@ -165,7 +205,7 @@ def test_overrite_with_dict():
         foo: Foo
         bar: Bar
         baz: float
-        bam: List[int] = None
+        bam: List[int] = []
         fang = 6
 
     with tempfile.TemporaryDirectory() as tmpd:
@@ -183,7 +223,7 @@ def test_overrite_with_dict():
     assert t.foo.b == 52
     assert t.bar.a == 4
     assert t.bar.b == 2
-    assert t.bam is None
+    assert t.bam == []
     assert t.fang == 10
     assert t.baz == 0.9
 
@@ -204,8 +244,8 @@ def test_save_and_load():
     class TestConf:
         foo: Foo
         bar: Bar
-        baz: float
-        bam: List[int] = None
+        baz: float = 1
+        bam: List[int] = []
         fang = 6
 
     t1 = TestConf()
@@ -225,6 +265,43 @@ def test_save_and_load():
 
 
 @test
+def test_new_object_for_default_generation():
+    @mcf.config
+    class Foo:
+        a: Bar
+        b: int = 2
+
+    @mcf.config
+    class Bar:
+        a: int = 1
+        b: int = 2
+
+    @mcf.config(isroot=True)
+    class TestConf:
+        foo: Foo
+        bar: Bar
+        baz: float = 0.1
+        bam: List[int] = []
+        bal: List[int] = [1, 2, 3]
+        fang = 6
+
+    t1 = TestConf()
+    t2 = TestConf()
+
+    assert t1.foo.a.a == t2.foo.a.a
+    assert t1.foo.b == t2.foo.b
+    assert t1.bar.a == t2.bar.a
+    assert t1.bar.b == t2.bar.b
+    assert t1.bam == t2.bam
+    assert t1.bam is not t2.bam
+    assert t1.bal == [1, 2, 3]
+    assert t1.bal == t2.bal
+    assert t1.bal is not t2.bal
+    assert t1.fang == t2.fang
+    assert t1.baz == t2.baz
+
+
+@test
 def test_list_elements():
     @mcf.config
     class Foo:
@@ -234,7 +311,7 @@ def test_list_elements():
     @mcf.config(isroot=True)
     class TestConf:
         baz: float
-        bam: List[Foo] = None
+        bam: List[Foo] = []
         fang = 6
 
     with tempfile.TemporaryDirectory() as tmpd:
@@ -272,6 +349,11 @@ def test_list_elements():
     assert t2.fang == 6
 
 
+@cleanup
+def reset():
+    setattr(mcf, "_C", {})
+
+
 def run_tests():
     failed = []
     for f in _TEST_F:
@@ -285,6 +367,7 @@ def run_tests():
         else:
             print("\033[32m[TEST]: Test ran successfully\033[0m")
         finally:
+            _CLEANUP()
             print("[TEST]: -------------------------------------------")
 
     if failed:
