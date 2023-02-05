@@ -82,61 +82,66 @@ def _handle_nested_configs(root: dict, field: str, annotation: str) -> Any:
         return type_(root.get(field, {}))
 
 
-def config(cls: type, name: str = None) -> type:
-    attrs = [
-        attr for attr in dir(cls) if not (callable(getattr(cls, attr)) or attr.startswith("__"))
-    ]
-    annotations = cls.__annotations__
-    fields = set(annotations.keys()) | set(attrs)
+def config(cls: type = None, isroot: bool = False) -> callable[[type], type] | type:
+    def f(cls: type) -> type:
+        attrs = [
+            attr for attr in dir(cls) if not (callable(getattr(cls, attr)) or attr.startswith("__"))
+        ]
+        annotations = cls.__annotations__
+        fields = set(annotations.keys()) | set(attrs)
 
-    if name is None:
-        name = cls.__name__
+        _CLS[cls.__name__] = cls
 
-    _CLS[cls.__name__] = cls
-
-    def __init__(self, root: dict = None):
-        if root is None:
-            if name in _C:
-                root = _C.get(name, {})
-            else:
-                root = _C
-
-        for field in fields:
-            if field in annotations and _is_conf_subtype(annotations[field]):
-                # field has annotation and is either config or list of config
-                setattr(self, field, _handle_nested_configs(root, field, annotations[field]))
-            elif field in root:
-                # has set value in config
-                setattr(self, field, root[field])
-            elif field in attrs:
-                # has default
-                setattr(self, field, getattr(cls, field))
-            else:
-                # missing value
-                raise ValueError(f"{field} doesn't have a set value nor a default value")
-
-    def asdict(self) -> dict:
-        dict_ = {}
-        for field in fields:
-            if field in annotations and _is_conf_subtype(annotations[field]):
-                # nested config
-                type_ = _get_type_from_str(annotations[field])
-                if type_ == list:
-                    dict_[field] = [elem.asdict() for elem in getattr(self, field)]
+        def __init__(self, root: dict = None):
+            if root is None:
+                if isroot:
+                    root = _C
+                elif cls.__name__ in _C:
+                    root = _C[cls.__name__]
                 else:
-                    dict_[field] = getattr(self, field).asdict()
-            else:
-                dict_[field] = getattr(self, field)
+                    root = {}
 
-        return dict_
+            for field in fields:
+                if field in annotations and _is_conf_subtype(annotations[field]):
+                    # field has annotation and is either config or list of config
+                    setattr(self, field, _handle_nested_configs(root, field, annotations[field]))
+                elif field in root:
+                    # has set value in config
+                    setattr(self, field, root[field])
+                elif field in attrs:
+                    # has default
+                    setattr(self, field, getattr(cls, field))
+                else:
+                    # missing value
+                    raise ValueError(f"{field} doesn't have a set value nor a default value")
 
-    def __str__(self) -> str:
-        dict_ = self.asdict()
-        return yaml.dump(dict_)
+        def asdict(self) -> dict:
+            dict_ = {}
+            for field in fields:
+                if field in annotations and _is_conf_subtype(annotations[field]):
+                    # nested config
+                    type_ = _get_type_from_str(annotations[field])
+                    if type_ == list:
+                        dict_[field] = [elem.asdict() for elem in getattr(self, field)]
+                    else:
+                        dict_[field] = getattr(self, field).asdict()
+                else:
+                    dict_[field] = getattr(self, field)
 
-    setattr(cls, "__init__", __init__)
-    setattr(cls, "asdict", asdict)
-    setattr(cls, "__str__", __str__)
-    setattr(cls, _MUCONF, True)
+            return dict_
 
-    return cls
+        def __str__(self) -> str:
+            dict_ = self.asdict()
+            return yaml.dump(dict_)
+
+        setattr(cls, "__init__", __init__)
+        setattr(cls, "asdict", asdict)
+        setattr(cls, "__str__", __str__)
+        setattr(cls, _MUCONF, True)
+
+        return cls
+
+    if cls is None:
+        return f
+    else:
+        return f(cls)

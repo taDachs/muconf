@@ -20,7 +20,7 @@ def test(f):
 
 @test
 def test_load_from_file():
-    @mcf.config
+    @mcf.config(isroot=True)
     class TestConf:
         foo: int = 1
         bar: str = "hello"
@@ -30,7 +30,7 @@ def test_load_from_file():
 
     with tempfile.TemporaryDirectory() as tmpd:
         conf_path = os.path.join(tmpd, "test_conf.yaml")
-        test_conf = {"TestConf": {"baz": 0.9, "fang": 10}}
+        test_conf = {"baz": 0.9, "fang": 10}
         with open(conf_path, "w+") as f:
             f.write(yaml.dump(test_conf))
         mcf.load_from_file(conf_path)
@@ -51,7 +51,7 @@ def test_nested_conf():
         a: int = 1
         b: int = 2
 
-    @mcf.config
+    @mcf.config(isroot=True)
     class TestConf:
         foo: Foo
         bar: str = "hello"
@@ -61,7 +61,7 @@ def test_nested_conf():
 
     with tempfile.TemporaryDirectory() as tmpd:
         conf_path = os.path.join(tmpd, "test_conf.yaml")
-        test_conf = {"TestConf": {"foo": {"b": 3}, "baz": 0.9, "fang": 10}}
+        test_conf = {"foo": {"b": 3}, "baz": 0.9, "fang": 10}
         with open(conf_path, "w+") as f:
             f.write(yaml.dump(test_conf))
         mcf.load_from_file(conf_path)
@@ -83,7 +83,7 @@ def test_double_nested_conf():
         a: int = 1
         b: int = 2
 
-    @mcf.config
+    @mcf.config(isroot=True)
     class TestConf:
         foo: Foo
         bar: Foo
@@ -93,7 +93,7 @@ def test_double_nested_conf():
 
     with tempfile.TemporaryDirectory() as tmpd:
         conf_path = os.path.join(tmpd, "test_conf.yaml")
-        test_conf = {"TestConf": {"foo": {"b": 3}, "baz": 0.9, "fang": 10, "bar": {"a": 4}}}
+        test_conf = {"foo": {"b": 3}, "baz": 0.9, "fang": 10, "bar": {"a": 4}}
         with open(conf_path, "w+") as f:
             f.write(yaml.dump(test_conf))
         mcf.load_from_file(conf_path)
@@ -121,7 +121,7 @@ def test_deeper_nested_conf():
         a: int = 1
         b: int = 2
 
-    @mcf.config
+    @mcf.config(isroot=True)
     class TestConf:
         foo: Foo
         bar: Bar
@@ -131,9 +131,8 @@ def test_deeper_nested_conf():
 
     with tempfile.TemporaryDirectory() as tmpd:
         conf_path = os.path.join(tmpd, "test_conf.yaml")
-        test_conf = {
-            "TestConf": {"foo": {"a": {"a": 49}, "b": 3}, "baz": 0.9, "fang": 10, "bar": {"a": 4}}
-        }
+        test_conf = {"foo": {"a": {"a": 49}, "b": 3}, "baz": 0.9, "fang": 10, "bar": {"a": 4}}
+
         with open(conf_path, "w+") as f:
             f.write(yaml.dump(test_conf))
         mcf.load_from_file(conf_path)
@@ -161,7 +160,7 @@ def test_overrite_with_dict():
         a: int = 1
         b: int = 2
 
-    @mcf.config
+    @mcf.config(isroot=True)
     class TestConf:
         foo: Foo
         bar: Bar
@@ -201,7 +200,7 @@ def test_save_and_load():
         a: int = 1
         b: int = 2
 
-    @mcf.config
+    @mcf.config(isroot=True)
     class TestConf:
         foo: Foo
         bar: Bar
@@ -232,7 +231,7 @@ def test_list_elements():
         a: int = 1
         b: int = 2
 
-    @mcf.config
+    @mcf.config(isroot=True)
     class TestConf:
         baz: float
         bam: List[Foo] = None
@@ -241,13 +240,11 @@ def test_list_elements():
     with tempfile.TemporaryDirectory() as tmpd:
         conf_path = os.path.join(tmpd, "test_conf.yaml")
         test_conf = {
-            "TestConf": {
-                "baz": 2.0,
-                "bam": [
-                    {"a": 5},
-                    {"b": 6},
-                ],
-            }
+            "baz": 2.0,
+            "bam": [
+                {"a": 5},
+                {"b": 6},
+            ],
         }
         with open(conf_path, "w+") as f:
             f.write(yaml.dump(test_conf))
